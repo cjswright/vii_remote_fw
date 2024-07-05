@@ -16,6 +16,11 @@ void hog_init(void);
 
 void hog_button_loop(void);
 
+
+void
+hog_update_xy(int8_t x, int8_t y);
+
+
 #ifdef __cplusplus
 }
 #endif

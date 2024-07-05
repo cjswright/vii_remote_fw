@@ -172,36 +172,47 @@ BT_GATT_SERVICE_DEFINE(hog_svc,
 			       NULL, write_ctrl_point, &ctrl_point),
 );
 
-void hog_init(void)
-{
-}
-
 #define SW0_NODE DT_ALIAS(sw0)
 
-void hog_button_loop(void)
+/* HID Report:
+ * Byte 0: buttons (lower 3 bits)
+ * Byte 1: X axis (int8)
+ * Byte 2: Y axis (int8)
+ */
+int8_t report[3] = {0, 0, 0};
+
+static void handler(struct k_work *work)
 {
-#if DT_NODE_HAS_STATUS(SW0_NODE, okay)
 	const struct gpio_dt_spec sw0 = GPIO_DT_SPEC_GET(SW0_NODE, gpios);
 
 	gpio_pin_configure_dt(&sw0, GPIO_INPUT);
 
-	for (;;) {
-		if (simulate_input) {
-			/* HID Report:
-			 * Byte 0: buttons (lower 3 bits)
-			 * Byte 1: X axis (int8)
-			 * Byte 2: Y axis (int8)
-			 */
-			int8_t report[3] = {0, 0, 0};
+    if (simulate_input) {
 
-			if (gpio_pin_get_dt(&sw0)) {
-				report[0] |= BIT(0);
-			}
+        report[0] = 0;
 
-			bt_gatt_notify(NULL, &hog_svc.attrs[5],
+        if (gpio_pin_get_dt(&sw0)) {
+            report[0] |= BIT(0);
+        }
+
+        bt_gatt_notify(NULL, &hog_svc.attrs[5],
 				       report, sizeof(report));
-		}
-		k_sleep(K_MSEC(100));
-	}
-#endif
+    }
+}
+
+
+struct k_work work = Z_WORK_INITIALIZER(handler);
+
+
+void hog_init(void)
+{
+}
+
+void
+hog_update_xy(int8_t x, int8_t y)
+{
+    report[1] = x;
+    report[2] = y;
+
+    k_work_submit(&work);
 }
